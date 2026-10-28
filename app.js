@@ -1,4 +1,4 @@
-const bank=[
+let bank=[
 {id:1,topic:"Administrative Thought",q:"The New Public Administration is considered anti-positivist. What does this mean?",o:["It rejects the definition of Public Administration as value-free.","It advocates only private-sector management.","It rejects social equity as a goal.","It focuses only on quantitative methods."],a:0,src:"Uploaded question-bank PDF, Question 2",why:"The PDF gives option A. Here, anti-positivism challenges the idea that public administration can be studied as entirely value-free."},
 {id:2,topic:"Administrative Thought",q:"'Catalytic Government' is a feature of which approach?",o:["Private Administration","Entrepreneurial Government","New Public Administration","Principal-Agent Relationship"],a:1,src:"Uploaded question-bank PDF, Question 4",why:"The PDF gives option B: Entrepreneurial Government. The catalytic idea is that government steers and enables rather than directly doing everything."},
 {id:3,topic:"Thinkers & Theories",q:"Who was acknowledged by Woodrow Wilson as a source of the idea of the politics–administration dichotomy?",o:["Hamilton","Bluntschli","Madison","Bentham"],a:1,src:"Uploaded question-bank PDF, Question 5",why:"The PDF gives option B: Bluntschli. Check your prescribed text if you need to verify the historical attribution."},
@@ -22,3 +22,72 @@ function results(){s.sessions++;dashboard();let pct=Math.round(s.right/s.items.l
 function renderFlash(){const c=$("content");$("progress").style.width=Math.min(100,(s.fi+1)/cards.length*100)+"%";if(s.fi>=cards.length){c.innerHTML='<div class="result"><h2>Recall round complete ✨</h2><p>You reviewed '+cards.length+' concepts.</p><button class="primary" id="againFlash">Run it back →</button></div>';$("againFlash").onclick=()=>openQuiz("flash");return;}let card=cards[s.fi];c.innerHTML='<div class="qmeta"><span>RECALL CARD '+(s.fi+1)+' OF '+cards.length+'</span><span>QUICK RECALL</span></div><button class="flashcard" id="flip"><small>'+(s.reveal?"THE KEY IDEA":"TRY TO RECALL")+'</small><strong>'+esc(s.reveal?card[1]:card[0])+'</strong><small>Tap card to '+(s.reveal?"see the prompt":"reveal answer")+'</small></button><div class="actions"><button class="secondary" id="exitFlash">Exit</button><button class="primary" id="nextFlash">'+(s.reveal?"Next card →":"Reveal answer")+'</button></div>';$("flip").onclick=()=>{s.reveal=!s.reveal;renderFlash();};$("nextFlash").onclick=()=>{if(!s.reveal)s.reveal=true;else{s.fi++;s.reveal=false;}renderFlash();};$("exitFlash").onclick=close;}
 function close(){$("modal").hidden=true;}
 $("start").onclick=()=>openQuiz("quiz");document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>openQuiz(b.dataset.mode));document.querySelectorAll("[data-topic]").forEach(b=>b.onclick=()=>openQuiz("quiz",b.dataset.topic));$("close").onclick=close;$("modal").onclick=e=>{if(e.target===$("modal"))close();};dashboard();
+
+// DOCX_IMPORT_PANEL — import a Word question bank in the browser.
+(function(){
+  const savedKey="pubadiquest_imported_questions_v1";
+  try {
+    const saved=JSON.parse(localStorage.getItem(savedKey)||"[]");
+    if(Array.isArray(saved)&&saved.length) bank=bank.filter(q=>!q.imported).concat(saved);
+  } catch(e) {}
+  const main=document.querySelector("main");
+  const footer=main&&main.querySelector("footer");
+  const panel=document.createElement("section");
+  panel.className="mission";
+  panel.style.cssText="display:block;margin-top:22px";
+  panel.innerHTML='<div class="mission-icon">📄</div><div class="mission-text"><small>YOUR QUESTION BANK</small><h3>Import questions from Word</h3><p>Choose your .docx file. Questions and answer keys will be extracted in this browser and saved on this device.</p><label for="docxImport" class="primary" style="display:inline-block;margin-top:10px;cursor:pointer">Choose Word file</label><input id="docxImport" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none"><p id="importStatus" role="status" style="margin-top:10px">Built-in practice questions are ready.</p></div>';
+  if(footer) main.insertBefore(panel,footer); else if(main) main.appendChild(panel);
+  const status=panel.querySelector("#importStatus"), input=panel.querySelector("#docxImport");
+  function loadMammoth(){
+    return new Promise((resolve,reject)=>{
+      if(window.mammoth) return resolve(window.mammoth);
+      const script=document.createElement("script");
+      script.src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js";
+      script.onload=()=>window.mammoth?resolve(window.mammoth):reject(new Error("Word reader could not start."));
+      script.onerror=()=>reject(new Error("Could not load the Word reader. Check your internet connection."));
+      document.head.appendChild(script);
+    });
+  }
+  function parseBank(raw){
+    const text=raw.replace(/\r/g,"").replace(/[ \t]+/g," ").trim();
+    const starts=[...text.matchAll(/(?:^|\n)\s*Q\.?\s*(\d+)\s*[:.)-]?\s*/g)];
+    const parsed=[];
+    for(let i=0;i<starts.length;i++){
+      const start=starts[i].index+(starts[i][0].startsWith("\n")?1:0);
+      const end=i+1<starts.length?starts[i+1].index:text.length;
+      const block=text.slice(start,end).trim();
+      const qm=block.match(/^Q\.?\s*(\d+)/i); if(!qm) continue;
+      const answerMatch=block.match(/Answer\s*:\s*([1-4])/i); if(!answerMatch) continue;
+      const beforeAnswer=block.slice(0,answerMatch.index).trim();
+      const lines=beforeAnswer.split("\n");
+      const optionStarts=[];
+      for(let j=0;j<lines.length;j++) if(/^\s*[1-4][.)]\s+/.test(lines[j])) optionStarts.push(j);
+      if(optionStarts.length<4) continue;
+      const opts=optionStarts.slice(-4);
+      const stem=lines.slice(0,opts[0]).join(" ").replace(/^Q\.?\s*\d+\s*/i,"").trim();
+      const options=opts.map((lineIndex,k)=>{
+        const endLine=k<3?opts[k+1]:lines.length;
+        return lines.slice(lineIndex,endLine).join(" ").replace(/^\s*[1-4][.)]\s*/,"").replace(/\s+/g," ").trim();
+      });
+      if(!stem||options.some(o=>!o)) continue;
+      parsed.push({id:1000+Number(qm[1]),topic:"June 2026 PYQ",q:stem,o:options,a:Number(answerMatch[1])-1,src:"2026 JUNE.docx · Question "+qm[1],why:"The answer key in your Word file marks option "+answerMatch[1]+". An explanation was not provided in the source file.",imported:true});
+    }
+    return parsed;
+  }
+  input.addEventListener("change",async()=>{
+    const file=input.files&&input.files[0]; if(!file)return;
+    status.textContent="Reading your Word file…";
+    try{
+      const mammoth=await loadMammoth();
+      const result=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});
+      const parsed=parseBank(result.value||"");
+      if(!parsed.length) throw new Error("I couldn't find question blocks with four numbered options and an Answer: 1–4 key. Please check that the file uses this format.");
+      bank=bank.filter(q=>!q.imported).concat(parsed);
+      localStorage.setItem(savedKey,JSON.stringify(parsed));
+      status.textContent="Imported "+parsed.length+" questions successfully. They are saved in this browser; start Quiz Arena to practise.";
+      const stat=document.querySelector(".stats article:first-child strong");
+      if(stat) stat.title="Question bank now includes your imported Word questions.";
+    }catch(err){status.textContent="Import failed: "+err.message;}
+    input.value="";
+  });
+})();
