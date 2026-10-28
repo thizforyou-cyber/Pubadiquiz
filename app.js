@@ -51,10 +51,11 @@ $("start").onclick=()=>openQuiz("quiz");document.querySelectorAll("[data-mode]")
   function parseBank(raw){
     const text=raw.replace(/\r/g,"").replace(/[ \t]+/g," ").trim();
     const starts=[...text.matchAll(/(?:^|\n)\s*Q\.?\s*(\d+)\s*[:.)-]?\s*/g)];
+    const positions=starts.map(m=>m.index+m[0].lastIndexOf("Q"));
     const parsed=[];
     for(let i=0;i<starts.length;i++){
-      const start=starts[i].index+(starts[i][0].startsWith("\n")?1:0);
-      const end=i+1<starts.length?starts[i+1].index:text.length;
+      const start=positions[i];
+      const end=i+1<positions.length?positions[i+1]:text.length;
       const block=text.slice(start,end).trim();
       const qm=block.match(/^Q\.?\s*(\d+)/i); if(!qm) continue;
       const answerMatch=block.match(/Answer\s*:\s*([1-4])/i); if(!answerMatch) continue;
